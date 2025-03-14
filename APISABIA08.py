@@ -337,67 +337,109 @@ def get_maritaca_response(message):
         st.error(f"Ocorreu um erro: {str(e)}")
         return None
 
+def get_temp_file_path(filename):
+    # Create a temp directory if it doesn't exist
+    temp_dir = "temp_files"
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    return os.path.join(temp_dir, f"temp_{st.session_state.session_id}_{filename}")
+
 def analyze_pdf_get_response(file_path):
     try:
-        with open(file_path, "rb") as file:
-            reader = PyPDF2.PdfReader(file)
-            pdf_content = ""
-            # Limit to first 20 pages to prevent API overload
-            for page_num in range(min(20, len(reader.pages))):
-                pdf_content += reader.pages[page_num].extract_text() or ""
+        if not os.path.exists(file_path):
+            return "Erro: Arquivo PDF não encontrado."
             
-            # Store full content for context - but limit it
-            st.session_state.pdf_content = pdf_content[:20000]
-            
-            # Improve analysis with better prompting
-            file_name = os.path.basename(file_path)
-            total_pages = len(reader.pages)
-            
-            analysis_prompt = (
-                f"{tones[st.session_state.tone_var]} Você é um especialista em análise de documentos. "
-                f"Analise este documento PDF de {total_pages} páginas chamado '{file_name}' e forneça: "
-                f"1. Um resumo executivo do conteúdo (máx. 3 parágrafos)\n"
-                f"2. Os principais pontos ou conclusões do documento (tópicos)\n"
-                f"3. Identificação de informações importantes como datas, valores monetários, e termos técnicos relevantes\n"
-                f"4. Se for um documento contábil ou financeiro, identifique valores, períodos fiscais, e obrigações\n"
-                f"Conteúdo do documento: {pdf_content[:10000]}"
-            )
+        print(f"Analisando PDF: {file_path}")
+        
+        # Use a try/except block specifically for PDF reading
+        try:
+            with open(file_path, "rb") as file:
+                reader = PyPDF2.PdfReader(file)
+                if len(reader.pages) == 0:
+                    return "Erro: O PDF não contém páginas legíveis."
+                    
+                pdf_content = ""
+                # Limit to first 20 pages to prevent API overload
+                for page_num in range(min(20, len(reader.pages))):
+                    page_text = reader.pages[page_num].extract_text() or ""
+                    pdf_content += page_text
+                
+                if not pdf_content.strip():
+                    return "Erro: Não foi possível extrair texto do PDF. O arquivo pode estar protegido ou conter apenas imagens."
+        except Exception as pdf_error:
+            return f"Erro ao ler o PDF: {str(pdf_error)}"
+                
+        # Store full content for context - but limit it
+        st.session_state.pdf_content = pdf_content[:20000]
+        
+        # Improve analysis with better prompting
+        file_name = os.path.basename(file_path)
+        total_pages = len(reader.pages)
+        
+        analysis_prompt = (
+            f"{tones[st.session_state.tone_var]} Você é um especialista em análise de documentos. "
+            f"Analise este documento PDF de {total_pages} páginas chamado '{file_name}' e forneça: "
+            f"1. Um resumo executivo do conteúdo (máx. 3 parágrafos)\n"
+            f"2. Os principais pontos ou conclusões do documento (tópicos)\n"
+            f"3. Identificação de informações importantes como datas, valores monetários, e termos técnicos relevantes\n"
+            f"4. Se for um documento contábil ou financeiro, identifique valores, períodos fiscais, e obrigações\n"
+            f"Conteúdo do documento: {pdf_content[:10000]}"
+        )
 
         # Use direct API calls instead of get_ai_response to avoid adding to history
-        if st.session_state.model_var.startswith("gemini"):
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel(st.session_state.model_var)
-            response = model.generate_content(analysis_prompt)
-            response_text = response.text if hasattr(response, "text") else "Resposta não suportada"
-        else:
-            messages = [{"role": "system", "content": tones[st.session_state.tone_var]}]
-            messages.append({"role": "user", "content": analysis_prompt})
-            response = client.chat.completions.create(
-                model=st.session_state.model_var,
-                messages=messages,
-                max_tokens=int(st.session_state.max_tokens),
-            )
-            response_text = response.choices[0].message.content
-            
-        return response_text
+        try:
+            if st.session_state.model_var.startswith("gemini"):
+                genai.configure(api_key=GOOGLE_API_KEY)
+                model = genai.GenerativeModel(st.session_state.model_var)
+                response = model.generate_content(analysis_prompt)
+                response_text = response.text if hasattr(response, "text") else "Resposta não suportada"
+            else:
+                messages = [{"role": "system", "content": tones[st.session_state.tone_var]}]
+                messages.append({"role": "user", "content": analysis_prompt})
+                response = client.chat.completions.create(
+                    model=st.session_state.model_var,
+                    messages=messages,
+                    max_tokens=int(st.session_state.max_tokens),
+                )
+                response_text = response.choices[0].message.content
+                
+            return response_text
+        except Exception as api_error:
+            return f"Erro na API ao analisar o PDF: {str(api_error)}"
 
     except Exception as e:
-        st.error(f"Erro ao analisar PDF: {str(e)}")
+        print(f"Erro detalhado ao analisar PDF: {str(e)}")
         return f"Erro ao analisar PDF: {str(e)}"
 
 def compare_pdfs_get_response(file_paths):
     try:
+        # Verificar se os arquivos existem
+        for path in file_paths:
+            if not os.path.exists(path):
+                return f"Erro: Arquivo PDF não encontrado: {path}"
+                
         pdf_contents = []
         filenames = []
+        
         for file_path in file_paths:
             filenames.append(os.path.basename(file_path))
-            content = ""
-            with open(file_path, "rb") as file:
-                reader = PyPDF2.PdfReader(file)
-                # Limit to first 10 pages per PDF
-                for page_num in range(min(10, len(reader.pages))):
-                    content += reader.pages[page_num].extract_text() or ""
-            pdf_contents.append(content[:8000])  # Limit PDF content more
+            try:
+                with open(file_path, "rb") as file:
+                    reader = PyPDF2.PdfReader(file)
+                    if len(reader.pages) == 0:
+                        return f"Erro: O PDF {os.path.basename(file_path)} não contém páginas legíveis."
+                        
+                    content = ""
+                    # Limit to first 10 pages per PDF
+                    for page_num in range(min(10, len(reader.pages))):
+                        content += reader.pages[page_num].extract_text() or ""
+                        
+                    if not content.strip():
+                        return f"Erro: Não foi possível extrair texto do PDF {os.path.basename(file_path)}."
+                        
+                    pdf_contents.append(content[:8000])  # Limit PDF content more
+            except Exception as pdf_error:
+                return f"Erro ao ler o PDF {os.path.basename(file_path)}: {str(pdf_error)}"
 
         current_tone = st.session_state.tone_var
         comparison_prompt = (
@@ -428,11 +470,16 @@ def compare_pdfs_get_response(file_paths):
         return response_text
 
     except Exception as e:
-        st.error(f"Erro ao comparar PDFs: {str(e)}")
+        print(f"Erro detalhado ao comparar PDFs: {str(e)}")
         return f"Erro ao comparar PDFs: {str(e)}"
 
 def analyze_multiple_pdfs_content_get_response(file_paths):
     try:
+        # Verificar se os arquivos existem
+        for path in file_paths:
+            if not os.path.exists(path):
+                return f"Erro: Arquivo PDF não encontrado: {path}"
+                
         pdf_contents = []
         filenames = []
         
@@ -442,13 +489,23 @@ def analyze_multiple_pdfs_content_get_response(file_paths):
         for file_path in file_paths:
             filenames.append(os.path.basename(file_path))
             content = ""
-            with open(file_path, "rb") as file:
-                reader = PyPDF2.PdfReader(file)
-                # Limit to first 5 pages per PDF
-                for page_num in range(min(5, len(reader.pages))):
-                    content += reader.pages[page_num].extract_text() or ""
-            # Limit content size per PDF
-            pdf_contents.append(content[:5000])
+            try:
+                with open(file_path, "rb") as file:
+                    reader = PyPDF2.PdfReader(file)
+                    if len(reader.pages) == 0:
+                        return f"Erro: O PDF {os.path.basename(file_path)} não contém páginas legíveis."
+                        
+                    # Limit to first 5 pages per PDF
+                    for page_num in range(min(5, len(reader.pages))):
+                        content += reader.pages[page_num].extract_text() or ""
+                        
+                    if not content.strip():
+                        return f"Erro: Não foi possível extrair texto do PDF {os.path.basename(file_path)}."
+                        
+                    # Limit content size per PDF
+                    pdf_contents.append(content[:5000])
+            except Exception as pdf_error:
+                return f"Erro ao ler o PDF {os.path.basename(file_path)}: {str(pdf_error)}"
 
         current_tone = st.session_state.tone_var
         multi_analysis_prompt = (
@@ -482,8 +539,8 @@ def analyze_multiple_pdfs_content_get_response(file_paths):
         return response_text
 
     except Exception as e:
-        st.error(f"Erro ao analisar PDFs: {str(e)}")
-        return f"Erro ao analisar PDFs: {str(e)}"
+        print(f"Erro detalhado ao analisar múltiplos PDFs: {str(e)}")
+        return f"Erro ao analisar múltiplos PDFs: {str(e)}"
 
 
 def new_conversation():
@@ -534,10 +591,6 @@ def save_chat_history():
         print(f"Histórico de chat salvo para sessão {st.session_state.session_id}.")
     except Exception as e:
         print(f"Erro ao salvar histórico de chat: {e}")
-
-# Modified to use session-specific temp files
-def get_temp_file_path(filename):
-    return f"temp_{st.session_state.session_id}_{filename}"
 
 load_chat_history()
 
@@ -593,13 +646,24 @@ with st.sidebar:
         if pdf_file:
             if st.button("Analisar PDF", key="sidebar_analisar_pdf_btn", use_container_width=True):
                 with st.spinner('Analisando PDF...'):
-                    temp_file_path = get_temp_file_path(pdf_file.name)
-                    with open(temp_file_path, "wb") as f:
-                        f.write(pdf_file.read())
-                    st.session_state.pdf_analysis_result = analyze_pdf_get_response(temp_file_path)
-                    # Clean up temp file
-                    if os.path.exists(temp_file_path):
-                        os.remove(temp_file_path)
+                    try:
+                        # Create a temp directory if it doesn't exist
+                        temp_file_path = get_temp_file_path(pdf_file.name)
+                        
+                        # Save uploaded file to disk
+                        with open(temp_file_path, "wb") as f:
+                            f.write(pdf_file.getbuffer())
+                            
+                        # Check file was saved correctly
+                        if not os.path.exists(temp_file_path) or os.path.getsize(temp_file_path) == 0:
+                            st.error("Erro ao salvar o arquivo PDF temporário.")
+                        else:
+                            st.session_state.pdf_analysis_result = analyze_pdf_get_response(temp_file_path)
+                            # Clean up temp file after analysis
+                            if os.path.exists(temp_file_path):
+                                os.remove(temp_file_path)
+                    except Exception as e:
+                        st.error(f"Erro ao processar o arquivo: {str(e)}")
                     st.rerun()
 
         st.markdown("### 🔍 Comparação de PDFs")
