@@ -25,6 +25,7 @@ st.set_page_config(
     page_icon="💬",  # Ícone mais apropriado para um sistema inteligente
     layout="wide",
     initial_sidebar_state="expanded",
+    theme="dark",  # Tema escuro para melhorar a leitura
 )
 
 # Add this near the top after st.set_page_config
@@ -119,7 +120,7 @@ if "font_size" not in st.session_state:
 if "max_tokens" not in st.session_state:
     st.session_state.max_tokens = 1000
 if "tone_var" not in st.session_state:
-    st.session_state.tone_var = "Conciso"
+    st.session_state.tone_var = "Amigável"
 if "model_var" not in st.session_state:
     st.session_state.model_var = "gemini-2.0-flash"
 
