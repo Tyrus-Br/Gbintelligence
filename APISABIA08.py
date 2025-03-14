@@ -25,87 +25,26 @@ st.set_page_config(
     page_icon="💬",  # Ícone mais apropriado para um sistema inteligente
     layout="wide",
     initial_sidebar_state="expanded",
-    # Removed theme="dark" parameter that was causing the error
 )
 
-# Force dark theme with JavaScript
-dark_theme_js = """
-<script>
-    // First attempt - Change theme attribute directly
-    document.body.setAttribute('data-theme', 'dark');
-    
-    // Second approach - Use localStorage to persist the theme setting
-    localStorage.setItem('streamlit_theming', JSON.stringify({
-        'theme': 'dark',
-        'primaryColor': '#0288D1',
-        'backgroundColor': '#121212',
-        'secondaryBackgroundColor': '#1E1E1E',
-        'textColor': '#E0E0E0',
-    }));
-    
-    // Force reload if not in dark mode already
-    if (!document.body.classList.contains('dark')) {
-        setTimeout(function() {
-            const isDark = document.body.classList.contains('dark') || 
-                          document.documentElement.getAttribute('data-theme') === 'dark';
-            if (!isDark) {
-                // Only reload if not already dark to avoid infinite reload
-                window.location.reload();
-            }
-        }, 300);
-    }
-</script>
-"""
-st.markdown(dark_theme_js, unsafe_allow_html=True)
-
-# Generate and maintain a unique session ID for each user
-if "session_id" not in st.session_state:
-    st.session_state.session_id = str(uuid.uuid4())
-
-# Modify chat history file to be session-specific
-def get_session_filename():
-    return f"chat_history_{st.session_state.session_id}.json"
+# Removed dark_theme_js code block that was forcing dark theme
 
 # Add this near the top after st.set_page_config
 custom_css = """
 <style>
-    body {
-        color: #E0E0E0;
-        background-color: #121212;
-    }
-    .main {
-        background-color: #1E1E1E;
-        color: #E0E0E0;
-    }
-    .stApp {
-        max-width: 100%;
-        margin: 0 auto;
-        background-color: #121212;
-    }
-    /* Adicionar estilo para o título do GB Intelligence */
-    .title-area h1 {
-        color: #81D4FA;  /* Light blue color for title */
-        font-weight: 700;
-        border-bottom: 2px solid #0288D1;
-        padding-bottom: 8px;
-    }
-    /* Resto do CSS ajustado para tema escuro */
+    /* Basic styling for chat interface */
     .chat-container {
         border-radius: 10px;
-        background-color: #2D2D2D;
         padding: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         margin-bottom: 20px;
     }
     .chat-message-user {
-        background-color: #1A3B47;
         border-radius: 15px;
         padding: 10px 15px;
         margin: 5px 0;
         border-left: 4px solid #0277BD;
     }
     .chat-message-bot {
-        background-color: #263238;
         border-radius: 15px;
         padding: 10px 15px;
         margin: 5px 0;
@@ -117,14 +56,6 @@ custom_css = """
     .message-actions:hover {
         opacity: 1;
     }
-    .stButton>button {
-        border-radius: 20px;
-        background-color: #0288D1;
-        color: white;
-    }
-    .stButton>button:hover {
-        background-color: #039BE5;
-    }
     .title-area {
         display: flex;
         align-items: center;
@@ -134,86 +65,21 @@ custom_css = """
         margin: 0;
     }
     .pdf-analysis-area {
-        background-color: #263238;
         padding: 15px;
         border-radius: 8px;
         margin-bottom: 15px;
-        color: #E0E0E0;
-    }
-    /* Added for better responsive layout */
-    .st-emotion-cache-18ni7ap {
-        max-width: 100%;
-    }
-    .st-emotion-cache-1kyxreq {
-        justify-content: space-between;
-    }
-    
-    /* Dark theme for sidebar and components */
-    .css-1d391kg, .css-1kyxreq {
-        background-color: #1A1A1A;
-    }
-    
-    /* Dark input fields */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: #2D2D2D;
-        color: #E0E0E0;
-    }
-    
-    /* Dark select boxes */
-    .stSelectbox>div>div {
-        background-color: #2D2D2D;
-        color: #E0E0E0;
-    }
-    
-    /* Dark text areas */
-    .stTextArea textarea {
-        background-color: #2D2D2D;
-        color: #E0E0E0;
-    }
-    
-    /* Handle markdown and text elements */
-    .element-container {
-        color: #E0E0E0;
-    }
-    
-    p, span, label, div {
-        color: #E0E0E0;
-    }
-    
-    /* Style links in dark theme */
-    a {
-        color: #29B6F6;
-    }
-    a:hover {
-        color: #4FC3F7;
-    }
-    
-    /* Dark expander styling */
-    .streamlit-expanderHeader {
-        background-color: #2D2D2D;
-        color: #E0E0E0;
-    }
-    
-    /* Dark chat input */
-    .stChatInput {
-        background-color: #2D2D2D;
-        border-color: #0288D1;
-    }
-    
-    /* Dark chat message containers */
-    .stChatMessageContent {
-        background-color: #263238;
-        color: #E0E0E0;
-    }
-    
-    /* Warning messages */
-    .stAlert {
-        background-color: #332D00;
-        color: #FFD166;
     }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
+
+# Generate and maintain a unique session ID for each user
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+# Modify chat history file to be session-specific
+def get_session_filename():
+    return f"chat_history_{st.session_state.session_id}.json"
 
 if "message_history" not in st.session_state:
     st.session_state.message_history = []
