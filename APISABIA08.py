@@ -25,56 +25,67 @@ st.set_page_config(
     page_icon="💬",  # Ícone mais apropriado para um sistema inteligente
     layout="wide",
     initial_sidebar_state="expanded",
-    theme="dark",  # Tema escuro para melhorar a leitura
+    # Removed theme="dark" parameter that was causing the error
 )
 
 # Add this near the top after st.set_page_config
 custom_css = """
 <style>
+    body {
+        color: #E0E0E0;
+        background-color: #121212;
+    }
     .main {
-        background-color: #f9f9f9;
+        background-color: #1E1E1E;
+        color: #E0E0E0;
     }
     .stApp {
         max-width: 100%;
         margin: 0 auto;
+        background-color: #121212;
     }
     /* Adicionar estilo para o título do GB Intelligence */
     .title-area h1 {
-        color: #2c3e50;  /* Cor mais corporativa */
+        color: #81D4FA;  /* Light blue color for title */
         font-weight: 700;
-        border-bottom: 2px solid #3498db;
+        border-bottom: 2px solid #0288D1;
         padding-bottom: 8px;
     }
-    /* Resto do CSS permanece igual */
+    /* Resto do CSS ajustado para tema escuro */
     .chat-container {
         border-radius: 10px;
-        background-color: white;
+        background-color: #2D2D2D;
         padding: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         margin-bottom: 20px;
     }
     .chat-message-user {
-        background-color: #e6f7ff;
+        background-color: #1A3B47;
         border-radius: 15px;
         padding: 10px 15px;
         margin: 5px 0;
-        border-left: 4px solid #1890ff;
+        border-left: 4px solid #0277BD;
     }
     .chat-message-bot {
-        background-color: #f6f6f6;
+        background-color: #263238;
         border-radius: 15px;
         padding: 10px 15px;
         margin: 5px 0;
-        border-left: 4px solid #52c41a;
+        border-left: 4px solid #2E7D32;
     }
     .message-actions {
-        opacity: 0.6;
+        opacity: 0.8;
     }
     .message-actions:hover {
         opacity: 1;
     }
     .stButton>button {
         border-radius: 20px;
+        background-color: #0288D1;
+        color: white;
+    }
+    .stButton>button:hover {
+        background-color: #039BE5;
     }
     .title-area {
         display: flex;
@@ -85,10 +96,11 @@ custom_css = """
         margin: 0;
     }
     .pdf-analysis-area {
-        background-color: #f0f8ff;
+        background-color: #263238;
         padding: 15px;
         border-radius: 8px;
         margin-bottom: 15px;
+        color: #E0E0E0;
     }
     /* Added for better responsive layout */
     .st-emotion-cache-18ni7ap {
@@ -96,6 +108,70 @@ custom_css = """
     }
     .st-emotion-cache-1kyxreq {
         justify-content: space-between;
+    }
+    
+    /* Dark theme for sidebar and components */
+    .css-1d391kg, .css-1kyxreq {
+        background-color: #1A1A1A;
+    }
+    
+    /* Dark input fields */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: #2D2D2D;
+        color: #E0E0E0;
+    }
+    
+    /* Dark select boxes */
+    .stSelectbox>div>div {
+        background-color: #2D2D2D;
+        color: #E0E0E0;
+    }
+    
+    /* Dark text areas */
+    .stTextArea textarea {
+        background-color: #2D2D2D;
+        color: #E0E0E0;
+    }
+    
+    /* Handle markdown and text elements */
+    .element-container {
+        color: #E0E0E0;
+    }
+    
+    p, span, label, div {
+        color: #E0E0E0;
+    }
+    
+    /* Style links in dark theme */
+    a {
+        color: #29B6F6;
+    }
+    a:hover {
+        color: #4FC3F7;
+    }
+    
+    /* Dark expander styling */
+    .streamlit-expanderHeader {
+        background-color: #2D2D2D;
+        color: #E0E0E0;
+    }
+    
+    /* Dark chat input */
+    .stChatInput {
+        background-color: #2D2D2D;
+        border-color: #0288D1;
+    }
+    
+    /* Dark chat message containers */
+    .stChatMessageContent {
+        background-color: #263238;
+        color: #E0E0E0;
+    }
+    
+    /* Warning messages */
+    .stAlert {
+        background-color: #332D00;
+        color: #FFD166;
     }
 </style>
 """
