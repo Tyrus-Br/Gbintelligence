@@ -6,9 +6,9 @@ import PyPDF2
 import random
 import json
 import google.generativeai as genai
-# Fix the import statement - remove GoogleSearch which isn't available in the library
 from google.generativeai.types import Tool
 import openai
+import uuid
 
 # Chaves das APIs ####(MANTENHA DO JEITO QUE ESTÃO)####
 GOOGLE_API_KEY = "AIzaSyC03_RHBNHP11_8KpvKkGsVHXQOb7HZ1h0" # Substitua com sua chave real
@@ -27,6 +27,44 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     # Removed theme="dark" parameter that was causing the error
 )
+
+# Force dark theme with JavaScript
+dark_theme_js = """
+<script>
+    // First attempt - Change theme attribute directly
+    document.body.setAttribute('data-theme', 'dark');
+    
+    // Second approach - Use localStorage to persist the theme setting
+    localStorage.setItem('streamlit_theming', JSON.stringify({
+        'theme': 'dark',
+        'primaryColor': '#0288D1',
+        'backgroundColor': '#121212',
+        'secondaryBackgroundColor': '#1E1E1E',
+        'textColor': '#E0E0E0',
+    }));
+    
+    // Force reload if not in dark mode already
+    if (!document.body.classList.contains('dark')) {
+        setTimeout(function() {
+            const isDark = document.body.classList.contains('dark') || 
+                          document.documentElement.getAttribute('data-theme') === 'dark';
+            if (!isDark) {
+                // Only reload if not already dark to avoid infinite reload
+                window.location.reload();
+            }
+        }, 300);
+    }
+</script>
+"""
+st.markdown(dark_theme_js, unsafe_allow_html=True)
+
+# Generate and maintain a unique session ID for each user
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+# Modify chat history file to be session-specific
+def get_session_filename():
+    return f"chat_history_{st.session_state.session_id}.json"
 
 # Add this near the top after st.set_page_config
 custom_css = """
@@ -182,7 +220,7 @@ if "message_history" not in st.session_state:
 if "pdf_content" not in st.session_state:
     st.session_state.pdf_content = ""
 if "chat_history_file" not in st.session_state:
-    st.session_state.chat_history_file = "chat_history.json"
+    st.session_state.chat_history_file = get_session_filename()
 if "gemini_model" not in st.session_state:
     st.session_state.gemini_model = None
 if "is_thinking" not in st.session_state:
@@ -610,20 +648,30 @@ def export_insights():
 
 def load_chat_history():
     try:
-        if os.path.exists(st.session_state.chat_history_file):
-            with open(st.session_state.chat_history_file, "r", encoding="utf-8") as f:
+        session_file = get_session_filename()
+        if os.path.exists(session_file):
+            with open(session_file, "r", encoding="utf-8") as f:
                 st.session_state.message_history = json.load(f)
-            print("Histórico de chat carregado.")
+            print(f"Histórico de chat carregado para sessão {st.session_state.session_id}.")
+        else:
+            print(f"Novo histórico iniciado para sessão {st.session_state.session_id}.")
+            st.session_state.message_history = []
     except Exception as e:
         print(f"Erro ao carregar histórico de chat: {e}")
+        st.session_state.message_history = []
 
 def save_chat_history():
     try:
-        with open(st.session_state.chat_history_file, "w", encoding="utf-8") as f:
+        session_file = get_session_filename()
+        with open(session_file, "w", encoding="utf-8") as f:
             json.dump(st.session_state.message_history, f, ensure_ascii=False, indent=2)
-        print("Histórico de chat salvo.")
+        print(f"Histórico de chat salvo para sessão {st.session_state.session_id}.")
     except Exception as e:
         print(f"Erro ao salvar histórico de chat: {e}")
+
+# Modified to use session-specific temp files
+def get_temp_file_path(filename):
+    return f"temp_{st.session_state.session_id}_{filename}"
 
 load_chat_history()
 
@@ -679,11 +727,13 @@ with st.sidebar:
         if pdf_file:
             if st.button("Analisar PDF", key="sidebar_analisar_pdf_btn", use_container_width=True):
                 with st.spinner('Analisando PDF...'):
-                    temp_file_path = f"temp_{pdf_file.name}"
+                    temp_file_path = get_temp_file_path(pdf_file.name)
                     with open(temp_file_path, "wb") as f:
                         f.write(pdf_file.read())
                     st.session_state.pdf_analysis_result = analyze_pdf_get_response(temp_file_path)
-                    os.remove(temp_file_path)
+                    # Clean up temp file
+                    if os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)
                     st.rerun()
 
         st.markdown("### 🔍 Comparação de PDFs")
@@ -693,13 +743,15 @@ with st.sidebar:
                 with st.spinner('Comparando PDFs...'):
                     temp_file_paths = []
                     for pdf_file in pdf_files_compare:
-                        temp_file_path = f"temp_{pdf_file.name}"
+                        temp_file_path = get_temp_file_path(pdf_file.name)
                         with open(temp_file_path, "wb") as f:
                             f.write(pdf_file.read())
                         temp_file_paths.append(temp_file_path)
                     st.session_state.pdf_comparison_result = compare_pdfs_get_response(temp_file_paths)
+                    # Clean up temp files
                     for path in temp_file_paths:
-                        os.remove(path)
+                        if os.path.exists(path):
+                            os.remove(path)
                     st.rerun()
 
         st.markdown("### 📚 Análise Múltipla")
@@ -709,13 +761,15 @@ with st.sidebar:
                 with st.spinner('Analisando Múltiplos PDFs...'):
                     temp_file_paths = []
                     for pdf_file in pdf_files_analyze_multiple:
-                        temp_file_path = f"temp_{pdf_file.name}"
+                        temp_file_path = get_temp_file_path(pdf_file.name)
                         with open(temp_file_path, "wb") as f:
                             f.write(pdf_file.read())
                         temp_file_paths.append(temp_file_path)
                     st.session_state.pdf_multi_analysis_result = analyze_multiple_pdfs_content_get_response(temp_file_paths)
+                    # Clean up temp files
                     for path in temp_file_paths:
-                        os.remove(path)
+                        if os.path.exists(path):
+                            os.remove(path)
                     st.rerun()
         elif pdf_files_analyze_multiple and len(pdf_files_analyze_multiple) > 10:
             st.warning("Selecione no máximo 10 arquivos PDF para análise múltipla.", icon="⚠️")
@@ -770,3 +824,10 @@ if prompt := st.chat_input("Digite sua mensagem aqui..."):
                 display_message(get_bot_name(), ai_response, "bot")
     elif len(prompt) > max_input_chars:
         st.warning(f"Sua mensagem excede o limite de {max_input_chars} caracteres.")
+
+# At the bottom, add a small indicator showing session ID (optional - helps for debugging)
+st.markdown(f"""
+<div style="position: fixed; bottom: 5px; right: 10px; font-size: 9px; opacity: 0.5; color: #777;">
+Session: {st.session_state.session_id[:8]}...
+</div>
+""", unsafe_allow_html=True)
