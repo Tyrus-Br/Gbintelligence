@@ -9,10 +9,18 @@ import google.generativeai as genai
 from google.generativeai.types import Tool
 import openai
 import uuid
+from dotenv import load_dotenv
 
-# Chaves das APIs ####(MANTENHA DO JEITO QUE ESTÃO)####
-GOOGLE_API_KEY = "AIzaSyC03_RHBNHP11_8KpvKkGsVHXQOb7HZ1h0" # Substitua com sua chave real
-MARITACA_API_KEY = "115990119488967327768_d98ac05a62c31fb7" # Substitua com sua chave real
+# Carrega as variáveis de ambiente do arquivo .env
+load_dotenv()
+
+# Chaves das APIs 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Chave da API do Google
+MARITACA_API_KEY = os.getenv("MARITACA_API_KEY") # Chave da API Maritaca
+
+# Imprime as chaves para verificar se foram carregadas corretamente
+print("GOOGLE_API_KEY:", GOOGLE_API_KEY)
+print("MARITACA_API_KEY:", MARITACA_API_KEY)
 
 # Configuração da API Maritaca
 client = openai.OpenAI(
